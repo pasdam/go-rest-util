@@ -1,4 +1,4 @@
-package restutil
+package restutil_test
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/pasdam/go-rest-util/pkg/restutil"
 	"github.com/pasdam/mockit/matchers/argument"
 	"github.com/pasdam/mockit/mockit"
 	"github.com/stretchr/testify/assert"
@@ -85,7 +86,7 @@ func TestGet(t *testing.T) {
 				mockit.MockFunc(t, ioutil.ReadAll).With(argument.Any).Return(nil, tt.mocks.readAllErr)
 			}
 
-			got, err := Get(url)
+			got, err := restutil.Get(url)
 
 			if wantErr != nil {
 				assert.NotNil(t, err)

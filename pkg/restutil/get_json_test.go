@@ -1,10 +1,11 @@
-package restutil
+package restutil_test
 
 import (
 	"encoding/json"
 	"errors"
 	"testing"
 
+	"github.com/pasdam/go-rest-util/pkg/restutil"
 	"github.com/pasdam/mockit/mockit"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,7 +68,7 @@ func TestGetJSON(t *testing.T) {
 			b := body{}
 
 			bodyJSON, _ := json.Marshal(tt.mocks.body)
-			mockit.MockFunc(t, Get).With(tt.args.url).Return(bodyJSON, tt.mocks.getErr)
+			mockit.MockFunc(t, restutil.Get).With(tt.args.url).Return(bodyJSON, tt.mocks.getErr)
 			if tt.mocks.unmarshalErr != nil {
 				mockit.MockFunc(t, json.Unmarshal).With(bodyJSON, &b).Return(tt.mocks.unmarshalErr)
 			}
@@ -79,7 +80,7 @@ func TestGetJSON(t *testing.T) {
 				wantErr = tt.mocks.unmarshalErr
 			}
 
-			err := GetJSON(tt.args.url, &b)
+			err := restutil.GetJSON(tt.args.url, &b)
 
 			assert.Equal(t, wantErr, err)
 			assert.Equal(t, tt.mocks.body, b)
