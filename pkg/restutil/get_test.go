@@ -16,11 +16,13 @@ import (
 
 func TestGet(t *testing.T) {
 	type mocks struct {
-		getErr     error
-		readAllErr error
+		getErr        error
+		newRequestErr error
+		readAllErr    error
 	}
 	type args struct {
-		url string
+		url    string
+		header http.Header
 	}
 	tests := []struct {
 		name    string
@@ -30,13 +32,16 @@ func TestGet(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "Should propagate error if http.Get raises it",
+			name: "Should propagate error if http.Client.Do raises it",
 			mocks: mocks{
-				getErr:     errors.New("some-get-error"),
-				readAllErr: nil,
+				getErr: errors.New("some-get-error"),
 			},
 			args: args{
 				url: "some-get-error-url",
+				header: map[string][]string{
+					"header-1": {"header-1-value"},
+					"header-2": {"header-2-value"},
+				},
 			},
 			want:    nil,
 			wantErr: "unable to perform request, some-get-error",
@@ -44,14 +49,32 @@ func TestGet(t *testing.T) {
 		{
 			name: "Should propagate error if ioutil.Readall raises it",
 			mocks: mocks{
-				getErr:     nil,
 				readAllErr: errors.New("some-read-all-error"),
 			},
 			args: args{
 				url: "some-read-all-error-url",
+				header: map[string][]string{
+					"header-1": {"header-1-value"},
+					"header-2": {"header-2-value"},
+				},
 			},
 			want:    nil,
 			wantErr: "unable to read the response body, some-read-all-error",
+		},
+		{
+			name: "Should propagate error if http.NewRequest raises it",
+			mocks: mocks{
+				newRequestErr: errors.New("some-new-request-error"),
+			},
+			args: args{
+				url: "some-new-request-error-url",
+				header: map[string][]string{
+					"header-3": {"header-3-value"},
+					"header-4": {"header-4-value"},
+				},
+			},
+			want:    nil,
+			wantErr: "unable to create request, some-new-request-error",
 		},
 		{
 			name: "Should return body content if no errors occur",
@@ -69,6 +92,10 @@ func TestGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// assert.Equal(t, tt.args.header, r.Header)
+				for key, value := range tt.args.header {
+					assert.Equal(t, value[0], r.Header.Get(key))
+				}
 				assert.Equal(t, http.MethodGet, r.Method)
 				assert.Equal(t, "/"+tt.args.url, r.RequestURI)
 				fmt.Fprintln(w, string(tt.want))
@@ -79,17 +106,23 @@ func TestGet(t *testing.T) {
 
 			var wantErr error = tt.mocks.getErr
 			if tt.mocks.getErr != nil {
-				mockit.MockFunc(t, http.Get).With(url).Return(nil, tt.mocks.getErr)
+				c := &http.Client{}
+				mockit.MockMethodForAll(t, c, c.Do).With(argument.Any).Return(nil, wantErr)
+
+			} else if tt.mocks.newRequestErr != nil {
+				wantErr = tt.mocks.newRequestErr
+				mockit.MockFunc(t, http.NewRequest).With("GET", url, nil).Return(nil, wantErr)
 
 			} else if tt.mocks.readAllErr != nil {
 				wantErr = tt.mocks.readAllErr
-				mockit.MockFunc(t, ioutil.ReadAll).With(argument.Any).Return(nil, tt.mocks.readAllErr)
+				mockit.MockFunc(t, ioutil.ReadAll).With(argument.Any).Return(nil, wantErr)
 			}
 
-			got, err := restutil.Get(url)
+			got, err := restutil.Get(url, tt.args.header)
 
 			if wantErr != nil {
 				assert.NotNil(t, err)
+				assert.Equal(t, tt.wantErr, err.Error())
 				assert.Equal(t, tt.wantErr, err.Error())
 			} else {
 				assert.Nil(t, err)

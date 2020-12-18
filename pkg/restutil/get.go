@@ -7,8 +7,17 @@ import (
 )
 
 // Get performs a GET request and return the body content
-func Get(url string) ([]byte, error) {
-	response, err := http.Get(url)
+func Get(url string, headers http.Header) ([]byte, error) {
+	c := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, errors.New("unable to create request, " + err.Error())
+	}
+
+	req.Header = headers
+
+	response, err := c.Do(req)
 	if err != nil {
 		return nil, errors.New("unable to perform request, " + err.Error())
 	}
