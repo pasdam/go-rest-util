@@ -37,8 +37,8 @@ func Test_GetCSV(t *testing.T) {
 				url: "some-url",
 			},
 			want: [][]string{
-				[]string{"row0-col0", "row0-col1"},
-				[]string{"row1-col0", "row1-col1"},
+				{"row0-col0", "row0-col1"},
+				{"row1-col0", "row1-col1"},
 			},
 			wantErr: nil,
 		},
