@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// GetCSV performs a GET request to the specified url and returns a CSV
 func GetCSV(url string) ([][]string, error) {
 	response, err := http.Get(url)
 	if err != nil {
