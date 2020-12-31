@@ -19,6 +19,8 @@ func TestGet(t *testing.T) {
 		getErr        error
 		newRequestErr error
 		readAllErr    error
+		responseCode  int
+		responseBody  []byte
 	}
 	type args struct {
 		url    string
@@ -29,38 +31,8 @@ func TestGet(t *testing.T) {
 		mocks   mocks
 		args    args
 		want    []byte
-		wantErr string
+		wantErr error
 	}{
-		{
-			name: "Should propagate error if http.Client.Do raises it",
-			mocks: mocks{
-				getErr: errors.New("some-get-error"),
-			},
-			args: args{
-				url: "some-get-error-url",
-				header: map[string][]string{
-					"header-1": {"header-1-value"},
-					"header-2": {"header-2-value"},
-				},
-			},
-			want:    nil,
-			wantErr: "unable to perform request, some-get-error",
-		},
-		{
-			name: "Should propagate error if ioutil.Readall raises it",
-			mocks: mocks{
-				readAllErr: errors.New("some-read-all-error"),
-			},
-			args: args{
-				url: "some-read-all-error-url",
-				header: map[string][]string{
-					"header-1": {"header-1-value"},
-					"header-2": {"header-2-value"},
-				},
-			},
-			want:    nil,
-			wantErr: "unable to read the response body, some-read-all-error",
-		},
 		{
 			name: "Should propagate error if http.NewRequest raises it",
 			mocks: mocks{
@@ -74,19 +46,62 @@ func TestGet(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "unable to create request, some-new-request-error",
+			wantErr: errors.New("unable to create request, some-new-request-error"),
+		},
+		{
+			name: "Should propagate error if http.Client.Do raises it",
+			mocks: mocks{
+				getErr: errors.New("some-get-error"),
+			},
+			args: args{
+				url: "some-get-error-url",
+				header: map[string][]string{
+					"header-1": {"header-1-value"},
+					"header-2": {"header-2-value"},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("unable to perform request, some-get-error"),
+		},
+		{
+			name: "Should propagate error if ioutil.ReadAll raises it",
+			mocks: mocks{
+				readAllErr:   errors.New("some-read-all-error"),
+				responseCode: 200,
+			},
+			args: args{
+				url: "some-read-all-error-url",
+				header: map[string][]string{
+					"header-1": {"header-1-value"},
+					"header-2": {"header-2-value"},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("unable to read the response body, some-read-all-error"),
 		},
 		{
 			name: "Should return body content if no errors occur",
 			mocks: mocks{
-				getErr:     nil,
-				readAllErr: nil,
+				responseCode: 201,
+				responseBody: []byte("some-response-body"),
 			},
 			args: args{
 				url: "some-successful-url",
 			},
 			want:    []byte("some-response-body"),
-			wantErr: "",
+			wantErr: nil,
+		},
+		{
+			name: "Should return error if the response is code is 400",
+			mocks: mocks{
+				responseCode: 400,
+				responseBody: []byte("some-unsuccessful-400-body"),
+			},
+			args: args{
+				url: "some-unsuccessful-400-url",
+			},
+			want:    nil,
+			wantErr: errors.New("Unsuccessful response (400). Body: some-unsuccessful-400-body\n"),
 		},
 	}
 	for _, tt := range tests {
@@ -98,14 +113,16 @@ func TestGet(t *testing.T) {
 				}
 				assert.Equal(t, http.MethodGet, r.Method)
 				assert.Equal(t, "/"+tt.args.url, r.RequestURI)
-				fmt.Fprintln(w, string(tt.want))
+				w.WriteHeader(tt.mocks.responseCode)
+				fmt.Fprintln(w, string(tt.mocks.responseBody))
 			}))
 			defer ts.Close()
 
 			url := ts.URL + "/" + tt.args.url
 
-			var wantErr error = tt.mocks.getErr
+			wantErr := tt.wantErr
 			if tt.mocks.getErr != nil {
+				wantErr = tt.mocks.getErr
 				c := &http.Client{}
 				mockit.MockMethodForAll(t, c, c.Do).With(argument.Any).Return(nil, wantErr)
 
@@ -122,15 +139,15 @@ func TestGet(t *testing.T) {
 
 			if wantErr != nil {
 				assert.NotNil(t, err)
-				assert.Equal(t, tt.wantErr, err.Error())
-				assert.Equal(t, tt.wantErr, err.Error())
+				assert.Equal(t, tt.wantErr.Error(), err.Error())
+				assert.Nil(t, got)
 			} else {
 				assert.Nil(t, err)
-			}
-			if len(tt.want) > 0 {
-				assert.Equal(t, string(tt.want)+"\n", string(got))
-			} else {
-				assert.Empty(t, got)
+				if len(tt.want) > 0 {
+					assert.Equal(t, string(tt.want)+"\n", string(got))
+				} else {
+					assert.Empty(t, got)
+				}
 			}
 		})
 	}

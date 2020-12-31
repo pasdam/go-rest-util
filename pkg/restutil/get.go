@@ -2,6 +2,7 @@ package restutil
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -28,6 +29,10 @@ func Get(url string, headers http.Header) ([]byte, error) {
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, errors.New("unable to read the response body, " + err.Error())
+	}
+
+	if response.StatusCode >= 400 {
+		return nil, fmt.Errorf("Unsuccessful response (%d). Body: %s", response.StatusCode, body)
 	}
 
 	return body, nil
