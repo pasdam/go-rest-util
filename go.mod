@@ -2,7 +2,7 @@ module github.com/pasdam/go-rest-util
 
 replace github.com/pasdam/go-rest-util/pkg => ./pkg
 
-go 1.14
+go 1.17
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
