@@ -5,7 +5,7 @@ replace github.com/pasdam/go-rest-util/pkg => ./pkg
 go 1.17
 
 require (
-	github.com/pasdam/mockit v0.0.0-20201218205457-c54f12cbcca0
+	github.com/pasdam/mockit v0.0.0-20240524154541-fb54ecfd0e1e
 	github.com/stretchr/testify v1.9.0
 )
 
