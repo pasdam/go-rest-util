@@ -16,6 +16,7 @@ jobs:
     permissions:
       actions: write
       pull-requests: write
+      statuses: write
     steps:
       - uses: actions/checkout@v6.0.0
       - run: |
